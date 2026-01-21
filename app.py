@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.express as px
 import dash_bootstrap_components as dbc
 
-
+#test
 df = pd.read_csv('NASA_GISTEMP.csv', skiprows=1)
 df = df.replace('***', pd.NA)
 for col in df.columns:
