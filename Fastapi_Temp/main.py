@@ -6,7 +6,7 @@ from pydantic import BaseModel #FastApi bibliotek
 from typing import List #Type hints
 
 # Konfiguration
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+DATA_DIR = Path(__file__).resolve().parent / "data"
 GISTEMP_PATH = DATA_DIR / "gistemp.csv"
 
 BASELINE = "1951-1980"  # GISTEMP anomaly baseline
@@ -29,7 +29,7 @@ class HistoricalResponse(BaseModel):
     series: List[YearValue]
 
 # App
-app = FastAPI(title="Story 8 Temperature API", version="0.1.0")
+app = FastAPI()
 
 # CORS
 app.add_middleware(
