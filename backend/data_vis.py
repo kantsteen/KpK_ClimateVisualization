@@ -1,5 +1,6 @@
 import pandas as pd
 
+# this file is just for testing the functioning and printing its output
 co2_df = pd.read_csv("data/owid-co2-data.csv")
 
 def get_co2(year: int, metric: str = "total"):
