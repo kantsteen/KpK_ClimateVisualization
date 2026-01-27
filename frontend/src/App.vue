@@ -9,7 +9,7 @@ const mapContainer = ref(null)
 
 onMounted(async () => {
   // Step 1: Fetch CO2 data from our backend
-  const response = await fetch('http://localhost:8000/api/co2?year=2023&metric=')
+  const response = await fetch('http://localhost:8000/api/co2?year=2023&metric=total')
   const co2Data = await response.json()
   
   console.log('Received data:', co2Data.length, 'countries')
