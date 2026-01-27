@@ -12,6 +12,7 @@ app.add_middleware(
 )
 
 co2_df=pd.read_csv("data/owid-co2-data.csv")
+temp_df=pd.read_csv("data/NASA_GISTEMP.csv", skiprows=1)
 
 @app.get("/api/co2")
 def get_co2(year: int, metric: str = "total"):
@@ -26,3 +27,12 @@ def get_co2(year: int, metric: str = "total"):
     result_df.columns = ["code", "value"]
         
     return result_df.to_dict(orient="records")
+
+
+@app.get("/api/temperature")
+def get_temperature():
+    df = temp_df[["Year", "J-D"]].copy()
+    df = df[df["J-D"] != "***"]
+    df.columns = ["year", "temperature"]
+    df["temperature"] = df["temperature"].astype(float)
+    return df.to_dict(orient="records")
