@@ -9,15 +9,17 @@ const mapContainer = ref(null)
 
 onMounted(async () => {
 
-  const response = await fetch('http://localhost:8000/api/co2?year=2023&metric=total')
+  const response = await fetch('http://localhost:8000/api/co2?year=2023')
   const co2Data = await response.json()
   
-  console.log('Received data:', co2Data.length, 'countries')
-  console.log('First 3:', co2Data.slice(0, 3))
+  
+  const co2ByCountry = {}
+  for (const country of co2Data){
+    co2ByCountry[country.code] = country.value
+  }
 
   // Find the max value for scaling colors
   const maxCo2 = Math.max(...co2Data.map(d => d.value))
-  console.log('Max CO2:', maxCo2)
 
   const colorExpression = [
     'match',
@@ -34,16 +36,21 @@ onMounted(async () => {
     // Matches a country's code with it's calculated RGB color
     colorExpression.push(country.code, color)
   }
-
   // Default color for countries with no data
   colorExpression.push('#cccccc')
 
   // Create the map
   const map = new mapboxgl.Map({
     container: mapContainer.value,
-    style: 'mapbox://styles/mapbox/light-v11',
+    //projection: 'naturalEarth',
+    style: 'mapbox://styles/mapbox/standard',
     center: [10.4, 55.4],
     zoom: 3
+  })
+
+  const popup = new mapboxgl.Popup({
+    closeButton: false,
+    closeOnClick: false
   })
 
   map.on('load', () => {
@@ -62,6 +69,31 @@ onMounted(async () => {
         'fill-opacity': 0.7
       }
     })
+
+    map.on('mousemove', 'country-fills', (e) => {
+      map.getCanvas().style.cursor = 'pointer'
+
+      const feature = e.features[0]
+      const countryName = feature.properties.name_en 
+      const isoCode = feature.properties.iso_3166_1_alpha_3 
+      
+      const co2Value = co2ByCountry[isoCode]
+
+      let html = `<strong>${countryName}</strong><br>`
+      if (co2Value !== undefined){
+        html += `CO2: ${co2Value.toFixed(2)} Mt`
+      } else {
+        html += `CO2: No data`
+      }
+
+      popup.setLngLat(e.lngLat).setHTML(html).addTo(map)
+    })
+
+    map.on('mouseleave', 'country-fills', () => {
+      map.getCanvas().style.cursor = ''
+      popup.remove()
+    })
+
   })
 })
 </script>
