@@ -19,3 +19,18 @@ def get_co2(year: int, metric: str = "total"):
     return result_df.to_dict(orient="records")
 
 get_co2(2020, "total")
+
+
+temp_df=pd.read_csv("data/NASA_GISTEMP.csv", skiprows=1)
+
+def get_temperature():
+    df = temp_df[["Year", "J-D"]].copy()
+    df = df[df["J-D"] != "***"]
+    df.columns = ["year", "temperature"]
+    df["temperature"] = df["temperature"].astype(float)
+
+    print(df)
+
+    return df.to_dict(orient="records")
+
+get_temperature()
