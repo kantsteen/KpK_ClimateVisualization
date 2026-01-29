@@ -14,6 +14,7 @@ app.add_middleware(
 co2_df=pd.read_csv("data/owid-co2-data.csv")
 temp_df=pd.read_csv("data/NASA_GISTEMP.csv", skiprows=1)
 
+
 @app.get("/api/co2")
 def get_co2(year: int):
     df = co2_df[
@@ -24,6 +25,23 @@ def get_co2(year: int):
     
     result_df = df[["iso_code", "co2", "co2_per_capita"]].dropna()
     result_df.columns = ["code", "co2", "co2_per_capita"]
+    
+    return result_df.to_dict(orient="records")
+
+
+@app.get("/api/co2/all")
+def get_co2():
+    df = co2_df[
+        (co2_df["year"] >= 1950) &
+        (co2_df["iso_code"].notna()) &
+        (co2_df["iso_code"].str.len() == 3)
+    ]
+
+    # filter out huge outliers
+    df = df[df["co2_per_capita"] <= 100]
+    
+    result_df = df[["year", "iso_code", "co2", "co2_per_capita"]].dropna()
+    result_df.columns = ["year", "code", "co2", "co2_per_capita"]
         
     return result_df.to_dict(orient="records")
 
