@@ -122,7 +122,7 @@ onMounted(async () => {
         'fill-opacity': 0.7,
         'fill-color-transition': { duration: 300, delay: 0 }
       }, 
-    }, 'country-label')
+    }, 'country-labels')
 
     // Set initial feature states
     updateFeatureStates(currentYear.value, currentMetric.value)
