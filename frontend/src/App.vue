@@ -1,7 +1,9 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import TemperatureTimeline from './TemperatureTimeline.vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
@@ -174,13 +176,32 @@ onMounted(async () => {
     </div>
   </div>
 
+
   <div ref="mapContainer" class="map-container"></div>
+=======
+<div ref="mapContainer" class="map-container"></div>
+
+<div class="bottom-grid">
+  <div class="card">
+    <TemperatureTimeline />
+  </div>
+
+  <div class="card">
+    <h3>More charts</h3>
+    <p>(CO2 trend, sea level, osv.).</p>
+  </div>
+</div>
 </template>
 
 <style scoped>
 .map-container {
   width: 100%;
   height: 100vh;
+}
+
+/* override mapheight to make grid visible */
+.map-container {
+  height: 65vh;
 }
 
 .controls {
@@ -229,5 +250,40 @@ onMounted(async () => {
 .year-slider input {
   width: 200px;
   cursor: pointer;
+=======
+/* Bottom grid layout */
+.bottom-grid {
+  height: 35vh;
+  padding: 12px;
+  background: #f6f7f9;
+  display: grid;
+  grid-template-columns: 2fr 1fr; /* wide chart + side box */
+  gap: 12px;
+  overflow: visible;
+}
+
+.card {
+  background: white;
+  border: 1px solid #e6e8ee;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.card h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.card p {
+  margin: 0;
+  font-size: 13px;
+  color: #555;
+}
+
+/* responsive: stack cards on small screens */
+@media (max-width: 900px) {
+  .bottom-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
