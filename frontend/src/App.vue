@@ -124,7 +124,7 @@ onMounted(async () => {
         'fill-opacity': 0.7,
         'fill-color-transition': { duration: 300, delay: 0 }
       }, 
-    }, 'country-labels')
+    }, 'country-label')
 
     // Set initial feature states
     updateFeatureStates(currentYear.value, currentMetric.value)
@@ -175,10 +175,6 @@ onMounted(async () => {
       <input type="range" :min="minYear" :max="maxYear" :value="currentYear" @input="onYearChange">
     </div>
   </div>
-
-
-  <div ref="mapContainer" class="map-container"></div>
-=======
 <div ref="mapContainer" class="map-container"></div>
 
 <div class="bottom-grid">
@@ -250,7 +246,8 @@ onMounted(async () => {
 .year-slider input {
   width: 200px;
   cursor: pointer;
-=======
+
+}
 /* Bottom grid layout */
 .bottom-grid {
   height: 35vh;
