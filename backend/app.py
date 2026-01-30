@@ -15,18 +15,18 @@ co2_df=pd.read_csv("data/owid-co2-data.csv")
 temp_df=pd.read_csv("data/NASA_GISTEMP.csv", skiprows=1)
 
 
-@app.get("/api/co2")
-def get_co2(year: int):
-    df = co2_df[
-        (co2_df["year"] == year) &
-        (co2_df["iso_code"].notna()) &
-        (co2_df["iso_code"].str.len() == 3)
-    ]
+# @app.get("/api/co2")
+# def get_co2(year: int):
+#     df = co2_df[
+#         (co2_df["year"] == year) &
+#         (co2_df["iso_code"].notna()) &
+#         (co2_df["iso_code"].str.len() == 3)
+#     ]
     
-    result_df = df[["iso_code", "co2", "co2_per_capita"]].dropna()
-    result_df.columns = ["code", "co2", "co2_per_capita"]
+#     result_df = df[["iso_code", "co2", "co2_per_capita"]].dropna()
+#     result_df.columns = ["code", "co2", "co2_per_capita"]
     
-    return result_df.to_dict(orient="records")
+#     return result_df.to_dict(orient="records")
 
 
 @app.get("/api/co2/all")
