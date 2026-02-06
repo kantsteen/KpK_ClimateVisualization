@@ -34,15 +34,15 @@ def get_co2():
     df = co2_df[
         (co2_df["year"] >= 1950) &
         (co2_df["iso_code"].notna()) &
-        (co2_df["iso_code"].str.len() == 3)
+        ((co2_df["iso_code"].str.len() == 3) | (co2_df["iso_code"] == "OWID_WRL"))
     ]
 
     # filter out huge outliers
     df = df[df["co2_per_capita"] <= 100]
-    
-    result_df = df[["year", "iso_code", "co2", "co2_per_capita"]].dropna()
-    result_df.columns = ["year", "code", "co2", "co2_per_capita"]
-        
+
+    result_df = df[["year", "country", "iso_code", "co2", "co2_per_capita"]].dropna()
+    result_df.columns = ["year", "country", "code", "co2", "co2_per_capita"]
+
     return result_df.to_dict(orient="records")
 
 

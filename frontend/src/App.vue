@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import TemperatureTimeline from './TemperatureTimeline.vue'
+import CountryComparisonChart from './components/CountryComparisonChart.vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
@@ -13,7 +14,9 @@ const currentYear = ref(2024)
 const minYear = 1950
 const maxYear = 2024
 
-let allData = []
+const allData = ref([])
+const selectedCountries = ref(['USA', 'CHN', 'DEU', 'BRA', 'DNK'])
+
 let co2ByCountryByYear = {}
 let map = null
 let globalMaxCo2 = 0
@@ -51,10 +54,10 @@ function onYearChange(event) {
 onMounted(async () => {
 
   const response = await fetch('http://localhost:8000/api/co2/all')
-  allData = await response.json()
+  allData.value = await response.json()
 
 
-  for (const row of allData) {
+  for (const row of allData.value) {
     if (!co2ByCountryByYear[row.year]) {
       co2ByCountryByYear[row.year] = {}
     }
@@ -64,12 +67,12 @@ onMounted(async () => {
     }
   }
 
-  globalMaxCo2 = allData.reduce((max, row) => {
+  globalMaxCo2 = allData.value.reduce((max, row) => {
     if (row.co2 != null && row.co2 > max) return row.co2
     return max
   }, 0)
 
-  globalMaxCo2PerCapita = allData.reduce((max, row) => {
+  globalMaxCo2PerCapita = allData.value.reduce((max, row) => {
     if (row.co2_per_capita != null && row.co2_per_capita > max) return row.co2_per_capita
     return max
   }, 0)
@@ -77,10 +80,10 @@ onMounted(async () => {
 
   console.log('Global max CO2:', globalMaxCo2)
   console.log('Global max CO2 per capita:', globalMaxCo2PerCapita)
-  console.log('Total rows:', allData.length)
-  console.log('First 3 rows:', allData.slice(0, 3))
-  console.log('Sample co2 values:', allData.slice(0, 10).map(row => row.co2))
-  console.log('Sample co2_per_capita values:', allData.slice(0, 10).map(row => row.co2_per_capita))
+  console.log('Total rows:', allData.value.length)
+  console.log('First 3 rows:', allData.value.slice(0, 3))
+  console.log('Sample co2 values:', allData.value.slice(0, 10).map(row => row.co2))
+  console.log('Sample co2_per_capita values:', allData.value.slice(0, 10).map(row => row.co2_per_capita))
 
   // Create the map
   map = new mapboxgl.Map({
@@ -182,11 +185,16 @@ onMounted(async () => {
     <TemperatureTimeline />
   </div>
 
-  <div class="card">
-    <h3>More charts</h3>
-    <p>(CO2 trend, sea level, osv.).</p>
-  </div>
+  
 </div>
+
+<div class="card comparison-card">
+    <CountryComparisonChart
+      :data="allData"
+      v-model:selectedCountries="selectedCountries"
+      :metric="currentMetric"
+    />
+  </div>
 </template>
 
 <style scoped>
@@ -275,6 +283,10 @@ onMounted(async () => {
   margin: 0;
   font-size: 13px;
   color: #555;
+}
+
+.comparison-card {
+  overflow: visible;
 }
 
 /* responsive: stack cards on small screens */
