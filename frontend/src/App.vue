@@ -86,8 +86,8 @@ onMounted(async () => {
   // Create the map
   map = new mapboxgl.Map({
     container: mapContainer.value,
-    projection: 'naturalEarth',
-    style: 'mapbox://styles/mapbox/light-v11',
+    projection: 'globe',
+    style: 'mapbox://styles/mapbox/streets-v12',
     center: [10.4, 55.4],
     zoom: 3
   })
@@ -177,16 +177,15 @@ onMounted(async () => {
     </div>
   </div>
 <div ref="mapContainer" class="map-container"></div>
-
-<div class="bottom-grid">
-  <!-- <div class="card">
+<br>
+<SeaLevelMap/>
+<!-- <div class="bottom-grid">
+   <div class="card">
     <TemperatureTimeline />
-  </div> -->
+  </div> 
+</div> -->
+    
 
-  <div class="card">
-    <SeaLevelMap/>
-  </div>
-</div>
 </template>
 
 <style scoped>

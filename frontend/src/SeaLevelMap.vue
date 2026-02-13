@@ -10,14 +10,14 @@ let map = null
 
 onMounted(async () => {
   // Load the GeoJSON file from the public folder
-  const response = await fetch('/flood_zone_test.geojson')
+  const response = await fetch('/flood_zone_test_1m.geojson')
   const floodData = await response.json()
 
   console.log('Loaded flood data:', floodData.features.length, 'polygons')
 
   map = new mapboxgl.Map({
     container: mapContainer.value,
-    style: 'mapbox://styles/mapbox/standard',
+    style: 'mapbox://styles/mapbox/satellite-streets-v12',
     center: [12.0777, 55.6900],
     zoom: 13
   })
@@ -80,6 +80,6 @@ onMounted(async () => {
 <style scoped>
 .sea-level-map {
   width: 100%;
-  height: 500px;
+  height: 1000px;
 }
 </style>
