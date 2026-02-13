@@ -10,7 +10,7 @@ let map = null
 
 onMounted(async () => {
   // Load the GeoJSON file from the public folder
-  const response = await fetch('/flood_zone_test_1m.geojson')
+  const response = await fetch('/flood_115cm.geojson')
   const floodData = await response.json()
 
   console.log('Loaded flood data:', floodData.features.length, 'polygons')
