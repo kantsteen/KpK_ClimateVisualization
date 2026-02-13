@@ -1,8 +1,9 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import TemperatureTimeline from './TemperatureTimeline.vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import SeaLevelMap from './SeaLevelMap.vue'
+import TemperatureTimeline from './TemperatureTimeline.vue'
 
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
@@ -85,8 +86,8 @@ onMounted(async () => {
   // Create the map
   map = new mapboxgl.Map({
     container: mapContainer.value,
-    projection: 'naturalEarth',
-    style: 'mapbox://styles/mapbox/light-v11',
+    projection: 'globe',
+    style: 'mapbox://styles/mapbox/streets-v12',
     center: [10.4, 55.4],
     zoom: 3
   })
@@ -176,17 +177,15 @@ onMounted(async () => {
     </div>
   </div>
 <div ref="mapContainer" class="map-container"></div>
-
-<div class="bottom-grid">
-  <div class="card">
+<br>
+<SeaLevelMap/>
+<!-- <div class="bottom-grid">
+   <div class="card">
     <TemperatureTimeline />
-  </div>
+  </div> 
+</div> -->
+    
 
-  <div class="card">
-    <h3>More charts</h3>
-    <p>(CO2 trend, sea level, osv.).</p>
-  </div>
-</div>
 </template>
 
 <style scoped>
