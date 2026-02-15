@@ -10,14 +10,14 @@ let map = null
 
 onMounted(async () => {
   // Load the GeoJSON file from the public folder
-  const response = await fetch('/flood_115cm.geojson')
+  const response = await fetch('/flood_105cm.geojson')
   const floodData = await response.json()
 
   console.log('Loaded flood data:', floodData.features.length, 'polygons')
 
   map = new mapboxgl.Map({
     container: mapContainer.value,
-    style: 'mapbox://styles/mapbox/satellite-streets-v12',
+    style: 'mapbox://styles/mapbox/standard',
     center: [12.0777, 55.6900],
     zoom: 13
   })

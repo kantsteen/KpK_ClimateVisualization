@@ -1,31 +1,25 @@
 import rasterio
 import rasterio.features
 import numpy as np
-from shapely.geometry import shape, mapping
-from shapely.ops import transform as shapely_transform
+from shapely.geometry import shape
+from shapely.ops import unary_union
+from shapely.validation import make_valid
 from pyproj import Transformer
 import json
 import os
 import glob
 import time
 import csv
-import sys
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
-
-try:
-    import orjson
-    HAS_ORJSON = True
-except ImportError:
-    HAS_ORJSON = False
 
 
 # ── Configuration ──
 elevation_folder = "elevation_data_RF"
 output_folder = "flood_geojsons"
 water_threshold = 0.1
-simplify_tolerance_m = 3        # removes detail smaller than X meters
-min_polygon_area_m2 = 2000       # skip polygons smaller than X square meters
+simplify_tolerance_m = 1        # removes detail smaller than X meters
+min_polygon_area_m2 = 0       # skip polygons smaller than X square meters
 rounding_step_cm = 5  # round sea levels to nearest 5 cm
 
 
@@ -33,47 +27,26 @@ def round_to_step(value_cm, step_cm):
     return round(value_cm / step_cm) * step_cm
 
 
-def process_tile(tif_path, sea_levels, water_threshold, simplify_tolerance_m=3, min_polygon_area_m2=100, downsample=2):
+def process_tile(tif_path, sea_levels, water_threshold, simplify_tolerance_m=1):
     """Process one tile for all sea levels. Returns dict of sea_level -> list of polygons."""
     with rasterio.open(tif_path) as dataset:
-        if downsample > 1:
-            # Read at reduced resolution (e.g. 2x = 1/4 the pixels)
-            new_h = max(1, dataset.height // downsample)
-            new_w = max(1, dataset.width // downsample)
-            elevation = dataset.read(1, out_shape=(new_h, new_w),
-                                     resampling=rasterio.enums.Resampling.average)
-            # Adjust transform for the new resolution
-            tile_transform = dataset.transform * dataset.transform.scale(
-                dataset.width / new_w, dataset.height / new_h
-            )
-        else:
-            elevation = dataset.read(1)
-            tile_transform = dataset.transform
+        elevation = dataset.read(1)
+        transform = dataset.transform
 
-    min_elev = float(elevation.min())
-    max_elev = float(elevation.max())
+    min_elev = elevation.min()
+    max_elev = elevation.max()
 
     # Early exit: if entire tile is below water threshold, nothing to flood
     if max_elev < water_threshold:
         return {}
 
-    # Pre-compute the base mask (pixels above water threshold)
-    above_water = elevation >= water_threshold
-
     results = {}
-    prev_polys = None
-
     for sea_level in sea_levels:
         # Skip if lowest point is already above this sea level
         if min_elev >= sea_level:
             continue
 
-        # If fully flooded, all higher levels produce same result
-        if max_elev < sea_level and prev_polys is not None:
-            results[sea_level] = prev_polys
-            continue
-
-        flood_mask = above_water & (elevation < sea_level)
+        flood_mask = (elevation >= water_threshold) & (elevation < sea_level)
         if not flood_mask.any():
             continue
 
@@ -81,66 +54,104 @@ def process_tile(tif_path, sea_levels, water_threshold, simplify_tolerance_m=3, 
         raw_shapes = list(rasterio.features.shapes(
             flood_mask_uint8,
             mask=flood_mask_uint8,
-            transform=tile_transform,
-            connectivity=4
+            transform=transform
         ))
 
         polys = []
         for geom, _ in raw_shapes:
             poly = shape(geom)
-            if poly.area >= min_polygon_area_m2:
-                polys.append(poly.simplify(simplify_tolerance_m, preserve_topology=True))
+            if poly.area >= 10:
+                simplified = poly.simplify(simplify_tolerance_m, preserve_topology=True)
+                polys.append(make_valid(simplified))
 
         if polys:
             results[sea_level] = polys
-            if max_elev < sea_level:
-                prev_polys = polys
 
     return results
 
 
+def transform_coords_batch(coords, transformer):
+    """Batch-transform an array of coordinates from UTM to lat/lng."""
+    coords_arr = np.array(coords)
+    lngs, lats = transformer.transform(coords_arr[:, 0], coords_arr[:, 1])
+    return np.column_stack([np.round(lngs, 6), np.round(lats, 6)]).tolist()
+
+
+def batched_union(polygons, batch_size=500):
+    """Tree-reduce unary_union: merge in batches, then merge partial results."""
+    if len(polygons) <= batch_size:
+        return unary_union(polygons)
+    batches = [polygons[i:i + batch_size] for i in range(0, len(polygons), batch_size)]
+    partial = [unary_union(batch) for batch in batches]
+    return unary_union(partial)
+
+
 def merge_sea_level(args):
-    """Transform polygons for one sea level and build GeoJSON features.
-    Skips expensive unary_union — outputs individual polygons directly.
+    """Merge polygons for one sea level: union, transform, and build GeoJSON features.
     Designed to run in a separate process."""
     sea_level, polys, min_polygon_area_m2, output_folder = args
 
     transformer = Transformer.from_crs("EPSG:25832", "EPSG:4326", always_xy=True)
 
-    # Bulk transform function
-    def transform_fn(x, y):
-        lng, lat = transformer.transform(x, y)
-        return np.round(lng, 6), np.round(lat, 6)
+    merged = batched_union(polys)
+    merged = make_valid(merged)
 
-    # Transform each polygon and build features directly (no union)
+    if merged.geom_type == "GeometryCollection":
+        merged_list = [g for g in merged.geoms if g.geom_type in ("Polygon", "MultiPolygon")]
+        # Flatten any MultiPolygons within the collection
+        flat = []
+        for g in merged_list:
+            if g.geom_type == "MultiPolygon":
+                flat.extend(g.geoms)
+            else:
+                flat.append(g)
+        merged_list = flat
+    elif merged.geom_type == "Polygon":
+        merged_list = [merged]
+    elif merged.geom_type == "MultiPolygon":
+        merged_list = list(merged.geoms)
+    else:
+        return sea_level, 0, 0, 0, None
+
     features = []
     skipped_small = 0
 
-    for poly in polys:
-        if poly.area < min_polygon_area_m2:
+    for polygon in merged_list:
+        if polygon.area < min_polygon_area_m2:
             skipped_small += 1
             continue
 
-        transformed = shapely_transform(transform_fn, poly)
-        geom_geojson = mapping(transformed)
+        latlng_coords = transform_coords_batch(list(polygon.exterior.coords), transformer)
 
-        features.append({
+        holes = []
+        for interior in polygon.interiors:
+            hole_coords = transform_coords_batch(list(interior.coords), transformer)
+            holes.append(hole_coords)
+
+        coordinates = [latlng_coords] + holes
+
+        feature = {
             "type": "Feature",
-            "properties": {"name": "Roskilde Fjord", "sea_level_rise_m": sea_level},
-            "geometry": geom_geojson
-        })
+            "properties": {
+                "name": "Roskilde Fjord",
+                "sea_level_rise_m": sea_level
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": coordinates
+            }
+        }
+        features.append(feature)
 
-    geojson = {"type": "FeatureCollection", "features": features}
+    geojson = {
+        "type": "FeatureCollection",
+        "features": features
+    }
 
     sea_level_cm = round(sea_level * 100)
     output_file = os.path.join(output_folder, f"flood_{sea_level_cm}cm.geojson")
-
-    if HAS_ORJSON:
-        with open(output_file, "wb") as f:
-            f.write(orjson.dumps(geojson))
-    else:
-        with open(output_file, "w") as f:
-            json.dump(geojson, f)
+    with open(output_file, "w") as f:
+        json.dump(geojson, f)
 
     file_size_kb = round(os.path.getsize(output_file) / 1024, 1)
 
@@ -149,9 +160,6 @@ def merge_sea_level(args):
 
 if __name__ == '__main__':
     absolute_start_time = time.time()
-
-    # --test flag: only process first 3 sea levels for quick iteration
-    test_mode = "--test" in sys.argv
 
     os.makedirs(output_folder, exist_ok=True)
 
@@ -162,7 +170,7 @@ if __name__ == '__main__':
             projections.append({
                 "scenario": row ["scenario"],
                 "year": int(row["year"]),
-                "sea_level_cm": float("105")
+                "sea_level_cm": float(row["sea_level_cm"])
             })
 
     print(f"Loaded {len(projections)} projections")
@@ -184,16 +192,8 @@ if __name__ == '__main__':
 
     sea_levels = sorted([cm / 100 for cm in unique_levels_cm])
 
-    if test_mode:
-        sea_levels = sea_levels[:3]
-        print(f"TEST MODE: only processing first 3 sea levels")
-
     print(f"Unique sea levels after rounding to {rounding_step_cm}cm steps: {len(sea_levels)}")
     print(f"Values (m): {sea_levels}")
-    if HAS_ORJSON:
-        print("Using orjson for fast serialization")
-    else:
-        print("orjson not installed, using stdlib json (pip install orjson for ~5x faster writes)")
     print()
 
     tif_files = glob.glob(os.path.join(elevation_folder, "*.tif"))
@@ -208,7 +208,7 @@ if __name__ == '__main__':
 
     with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
         futures = {
-            executor.submit(process_tile, tif, sea_levels, water_threshold, simplify_tolerance_m, min_polygon_area_m2): tif
+            executor.submit(process_tile, tif, sea_levels, water_threshold, simplify_tolerance_m): tif
             for tif in sorted(tif_files)
         }
         for future in as_completed(futures):
@@ -251,7 +251,7 @@ if __name__ == '__main__':
             try:
                 sl, total_polys, final_count, skipped, file_kb = future.result()
                 if file_kb is not None:
-                    print(f"  {sl}m: {total_polys} polygons -> {final_count} features "
+                    print(f"  {sl}m: {total_polys} polygons → {final_count} features "
                           f"(skipped {skipped} small, {file_kb} KB)")
                 else:
                     print(f"  {sl}m: unexpected geometry type, skipped")
