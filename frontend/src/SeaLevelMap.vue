@@ -10,7 +10,7 @@ let map = null
 
 onMounted(async () => {
   // Load the GeoJSON file from the public folder
-  const response = await fetch('/flood_105cm.geojson')
+  const response = await fetch('http://localhost:8000/api/flood-zones?scenario=SSP585medium&year=2110')
   const floodData = await response.json()
 
   console.log('Loaded flood data:', floodData.features.length, 'polygons')
@@ -18,8 +18,11 @@ onMounted(async () => {
   map = new mapboxgl.Map({
     container: mapContainer.value,
     style: 'mapbox://styles/mapbox/standard',
-    center: [12.0777, 55.6900],
-    zoom: 13
+    center: [12.0933, 55.6907],
+    zoom: 13.8,
+    maxBounds: [[11.60, 55.60], [12.15, 56.00]], // Roskilde Fjord bounds
+    maxZoom: 16,
+    minZoom: 3
   })
 
   map.on('load', () => {
@@ -34,7 +37,7 @@ onMounted(async () => {
       source: 'flood-zones',
       paint: {
         'fill-color': '#0080ff',
-        'fill-opacity': 0.5
+        'fill-opacity': 0.4
       }
     })
 

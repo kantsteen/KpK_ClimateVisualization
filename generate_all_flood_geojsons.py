@@ -162,7 +162,7 @@ if __name__ == '__main__':
             projections.append({
                 "scenario": row ["scenario"],
                 "year": int(row["year"]),
-                "sea_level_cm": float("105")
+                "sea_level_cm": float(row["sea_level_cm"])
             })
 
     print(f"Loaded {len(projections)} projections")
