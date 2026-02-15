@@ -4,7 +4,9 @@
       "Bash(python:*)",
       "Bash(dir:*)",
       "Bash(.venv\\\\Scripts\\\\pip freeze:*)",
-      "Bash(.venv/Scripts/pip:*)"
+      "Bash(.venv/Scripts/pip:*)",
+      "Bash(copy \"C:\\\\Datamatiker_5sem\\\\KpK_ClimateVisualization\\\\generate_all_flood_geojsons.py\" \"C:\\\\Datamatiker_5sem\\\\KpK_ClimateVisualization\\\\generate_all_flood_geojsons_backup.py\")",
+      "Bash(.venv/Scripts/python:*)"
     ]
   }
 }
